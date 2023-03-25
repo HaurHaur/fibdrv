@@ -24,6 +24,9 @@ static struct cdev *fib_cdev;
 static struct class *fib_class;
 static DEFINE_MUTEX(fib_mutex);
 static ktime_t kt = 1;
+static long long dp[MAX_LENGTH + 1];
+
+
 
 static long long fib_sequence(long long k)
 {
@@ -38,6 +41,31 @@ static long long fib_sequence(long long k)
     }
 
     return f[k];
+}
+
+static long long fib_sequence_fast(long long k)
+{
+    if (k <= 2)
+        return !!k;
+    long long n, n1;
+    n = fib_sequence_fast(k >> 1);
+    n1 = fib_sequence_fast((k >> 1) + 1);
+    if (k & 1)
+        return n * n + n1 * n1;
+    return n * ((n1 << 1) - n);
+}
+
+static long long fib_sequence_dp(long long k)
+{
+    if (k <= 2) {
+        return dp[k];
+    }
+    if (!dp[k - 1])
+        fib_sequence_dp(k - 1);
+    if (!dp[k - 2])
+        fib_sequence_dp(k - 2);
+    dp[k] = dp[k - 1] + dp[k - 2];
+    return dp[k];
 }
 
 static int fib_open(struct inode *inode, struct file *file)
@@ -62,7 +90,7 @@ static ssize_t fib_read(struct file *file,
                         loff_t *offset)
 {
     ktime_t start = ktime_get();
-    ssize_t seq = (ssize_t) fib_sequence(*offset);
+    ssize_t seq = fib_sequence_dp(*offset);
     kt = ktime_sub(ktime_get(), start);
     return seq;
 }
@@ -73,7 +101,7 @@ static ssize_t fib_write(struct file *file,
                          size_t size,
                          loff_t *offset)
 {
-    return kt;
+    return ktime_to_ns(kt);
 }
 
 static loff_t fib_device_lseek(struct file *file, loff_t offset, int orig)
@@ -153,6 +181,14 @@ static int __init init_fib_dev(void)
         rc = -4;
         goto failed_device_create;
     }
+
+    dp[0] = 0;
+    dp[1] = 1;
+    dp[2] = 1;
+    for (int i = 3; i < MAX_LENGTH; i++) {
+        dp[i] = 0;
+    }
+
     return rc;
 failed_device_create:
     class_destroy(fib_class);

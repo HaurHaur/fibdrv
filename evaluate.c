@@ -20,8 +20,8 @@ int main()
 
     for (int i = 0; i <= offset; i++) {
         lseek(fd, i, SEEK_SET);
-        printf("%dth fibonacci is %lld \n", i, (long long) read(fd, buf, 1));
-        printf("%dth fibonacci cost %lld time \n", i,
-               (long long) write(fd, write_buf, strlen(write_buf)));
+        printf("F(%d) = %ld \n", i, read(fd, buf, 1));
+        printf("F(%d) cost %ld ns \n", i,
+               write(fd, write_buf, strlen(write_buf)));
     }
 }

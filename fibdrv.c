@@ -55,6 +55,22 @@ static long long fib_sequence_fast(long long k)
     return n * ((n1 << 1) - n);
 }
 
+static long long fib_sequence_fast_iter(long long k)
+{
+    if (k <= 2)
+        return !!k;
+    uint8_t lz = 63 - __builtin_clzll(k);
+    long long fib_n0 = 1, fib_n1 = 1, mask;
+    for (long long i = lz, fib_2n0, fib_2n1; i-- > 0;) {
+        fib_2n0 = fib_n0 * ((fib_n1 << 1) - fib_n0);
+        fib_2n1 = fib_n0 * fib_n0 + fib_n1 * fib_n1;
+        mask = -!!(k & (1L << i));
+        fib_n0 = (fib_2n1 & mask) + (fib_2n0 & (~mask));
+        fib_n1 = (fib_2n0 & mask) + fib_2n1;
+    }
+    return fib_n0;
+}
+
 static long long fib_sequence_dp(long long k)
 {
     if (k <= 2) {
@@ -90,7 +106,7 @@ static ssize_t fib_read(struct file *file,
                         loff_t *offset)
 {
     ktime_t start = ktime_get();
-    ssize_t seq = fib_sequence_dp(*offset);
+    ssize_t seq = fib_sequence_fast_iter(*offset);
     kt = ktime_sub(ktime_get(), start);
     return seq;
 }
